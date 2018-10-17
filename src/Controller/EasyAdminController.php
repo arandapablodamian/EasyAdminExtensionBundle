@@ -24,6 +24,7 @@ class EasyAdminController extends BaseEasyAdminControler
         $this->dispatch(EasyAdminEvents::POST_LIST, ['paginator' => $paginator]);
 
         return $this->render('@EasyAdminExtension/default/embedded_list.html.twig', [
+            'objectType' => 'entity',
             'paginator' => $paginator,
             'fields' => $fields,
             'masterRequest' => $this->get('request_stack')->getMasterRequest(),

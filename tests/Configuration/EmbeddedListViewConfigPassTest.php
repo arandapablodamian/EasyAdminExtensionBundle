@@ -21,6 +21,16 @@ class EmbeddedListViewConfigPassTest extends \PHPUnit_Framework_TestCase
                     'embeddedList' => ['open_new_tab' => false],
                 ],
             ],
+            'documents' => [
+                'NotSetDocument' => [
+                ],
+                'SetTrueDocument' => [
+                    'embeddedList' => ['open_new_tab' => true],
+                ],
+                'SetFalseDocument' => [
+                    'embeddedList' => ['open_new_tab' => false],
+                ],
+            ],
         ];
 
         $backendConfig = $embeddedListViewConfigPass->process($backendConfig);
@@ -38,6 +48,23 @@ class EmbeddedListViewConfigPassTest extends \PHPUnit_Framework_TestCase
                     ],
                 ],
                 'SetFalseEntity' => [
+                    'embeddedList' => [
+                        'open_new_tab' => false,
+                    ],
+                ],
+            ],
+            'documents' => [
+                'NotSetDocument' => [
+                    'embeddedList' => [
+                        'open_new_tab' => true,
+                    ],
+                ],
+                'SetTrueDocument' => [
+                    'embeddedList' => [
+                        'open_new_tab' => true,
+                    ],
+                ],
+                'SetFalseDocument' => [
                     'embeddedList' => [
                         'open_new_tab' => false,
                     ],

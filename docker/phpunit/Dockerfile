@@ -1,4 +1,10 @@
-FROM phpunit/phpunit:latest
+FROM php:7.2-cli
 
-RUN apk --no-cache add php7-iconv
-RUN apk --no-cache add php7-simplexml
+RUN docker-php-ext-install -j$(nproc) mysqli
+
+# Install MONGO
+RUN pecl install mongodb \
+	&& docker-php-ext-enable mongodb
+
+VOLUME ["/app"]
+WORKDIR /app

@@ -38,35 +38,13 @@ class EasyAdminEmbeddedListType extends AbstractType
      */
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
-        $parentData = $form->getParent()->getData();
-
-        $embeddedListEntity = $options['entity'];
-        $embeddedListFilters = $options['filters'];
-
-        // Guess entity FQCN from parent metadata
-        $entityFqcn = $this->embeddedListHelper->getEntityFqcnFromParent(\get_class($parentData), $form->getName());
-        if (null !== $entityFqcn) {
-            $view->vars['entity_fqcn'] = $entityFqcn;
-            // Guess embeddedList entity if not set
-            if (null === $embeddedListEntity) {
-                $embeddedListEntity = $this->embeddedListHelper->guessEntityEntry($entityFqcn);
-            }
+        if (null !== $options['document']) {
+            $view->vars['object_type'] = 'document';
+            $this->buildViewForDocumentList($view, $form, $options);
+        } else {
+            $view->vars['object_type'] = 'entity';
+            $this->buildViewForEntityList($view, $form, $options);
         }
-
-        $view->vars['entity'] = $embeddedListEntity;
-        $view->vars['parent_entity_property'] = $form->getConfig()->getName();
-
-        // Only for backward compatibility (when there were no guesser)
-        $propertyAccessor = PropertyAccess::createPropertyAccessor();
-        $filters = \array_map(function ($filter) use ($propertyAccessor, $form) {
-            if (0 === \strpos($filter, 'form:')) {
-                $filter = $propertyAccessor->getValue($form, \substr($filter, 5));
-            }
-
-            return $filter;
-        }, $embeddedListFilters);
-
-        $view->vars['filters'] = $filters;
 
         if ($options['sort']) {
             $sort['field'] = $options['sort'][0];
@@ -75,15 +53,68 @@ class EasyAdminEmbeddedListType extends AbstractType
         }
     }
 
+    private function buildViewForEntityList(FormView $view, FormInterface $form, array $options)
+    {
+        $parentData = $form->getParent()->getData();
+        $embeddedListEntity = $options['entity'];
+        $embeddedListFilters = $options['filters'];
+
+        // Guess entity FQCN from parent metadata
+        $entityFqcn = $this->embeddedListHelper->getEntityFqcnFromParent(\get_class($parentData), $form->getName());
+        if (null !== $entityFqcn) {
+            $view->vars['object_fqcn'] = $entityFqcn;
+            // Guess embeddedList entity if not set
+            if (null === $embeddedListEntity) {
+                $embeddedListEntity = $this->embeddedListHelper->guessEntityEntry($entityFqcn);
+            }
+        }
+
+        $view->vars['entity'] = $embeddedListEntity;
+        $view->vars['parent_object_property'] = $form->getConfig()->getName();
+
+        // Only for backward compatibility (when there were no guesser)
+        $propertyAccessor = PropertyAccess::createPropertyAccessor();
+        $filters = \array_map(function ($filter) use ($propertyAccessor, $parentData) {
+            if (0 === \strpos($filter, 'form:')) {
+                $filter = $propertyAccessor->getValue($parentData, \substr($filter, 5));
+            }
+
+            return $filter;
+        }, $embeddedListFilters);
+
+        $view->vars['filters'] = $filters;
+    }
+
+    private function buildViewForDocumentList(FormView $view, FormInterface $form, array $options)
+    {
+        $parentData = $form->getParent()->getData();
+        $view->vars['document'] = $options['document'];
+        $embeddedListFilters = $options['filters'];
+
+        // Only for backward compatibility (when there were no guesser)
+        $propertyAccessor = PropertyAccess::createPropertyAccessor();
+        $filters = \array_map(function ($filter) use ($propertyAccessor, $parentData) {
+            if (0 === \strpos($filter, 'form:')) {
+                $filter = $propertyAccessor->getValue($parentData, \substr($filter, 5));
+            }
+
+            return $filter;
+        }, $embeddedListFilters);
+
+        $view->vars['filters'] = $filters;
+    }
+
     /**
      * {@inheritdoc}
      */
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver
+            ->setDefault('document', null)
             ->setDefault('entity', null)
             ->setDefault('filters', [])
             ->setDefault('sort', null)
+            ->setAllowedTypes('document', ['null', 'string'])
             ->setAllowedTypes('entity', ['null', 'string'])
             ->setAllowedTypes('filters', ['array'])
             ->setAllowedTypes('sort', ['null', 'string', 'array'])

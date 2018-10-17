@@ -151,7 +151,7 @@ class UserRolesTest extends AbstractTestCase
         $crawler = $this->getBackendPage(['entity' => 'Category', 'action' => 'edit', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_CATEGORY_EDIT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_CATEGORY_EDIT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
 
@@ -174,7 +174,7 @@ class UserRolesTest extends AbstractTestCase
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'show', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
     }
@@ -204,19 +204,19 @@ class UserRolesTest extends AbstractTestCase
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'edit', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_EDIT_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_EDIT_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'Edit', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_EDIT_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_EDIT_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'EDIT', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_EDIT_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_EDIT_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
 
@@ -224,19 +224,19 @@ class UserRolesTest extends AbstractTestCase
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'show', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'Show', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
         $crawler = $this->getBackendPage(['entity' => 'Product', 'action' => 'SHOW', 'id' => 1]);
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(
-            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this entity action ! (403 Forbidden)',
+            'You must be granted ROLE_TEST_SHOW_PRODUCT role to perform this object action ! (403 Forbidden)',
             \trim($crawler->filterXPath('//head/title')->text())
         );
     }

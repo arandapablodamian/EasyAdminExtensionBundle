@@ -28,23 +28,33 @@ class MenuHelper
         $this->authorizationChecker = $authorizationChecker;
     }
 
-    public function pruneMenuItems(array $menuConfig, array $entitiesConfig)
+    public function pruneMenuItems(array $menuConfig, array $objectsConfig)
     {
-        $menuConfig = $this->pruneAccessDeniedEntries($menuConfig, $entitiesConfig);
+        $menuConfig = $this->pruneAccessDeniedEntries($menuConfig, $objectsConfig);
         $menuConfig = $this->pruneEmptyFolderEntries($menuConfig);
         $menuConfig = $this->reindexMenuEntries($menuConfig);
 
         return $menuConfig;
     }
 
-    protected function pruneAccessDeniedEntries(array $menuConfig, array $entitiesConfig)
+    protected function pruneAccessDeniedEntries(array $menuConfig, array $objectsConfig)
     {
         foreach ($menuConfig as $key => $entry) {
             if (
                 'entity' === $entry['type']
                 && isset($entry['entity'])
                 && !$this->adminAuthorizationChecker->isEasyAdminGranted(
-                    $entitiesConfig[$entry['entity']],
+                    $objectsConfig[$entry['entity']],
+                    isset($entry['params']) && isset($entry['params']['action']) ? $entry['params']['action'] : 'list'
+                )
+            ) {
+                unset($menuConfig[$key]);
+                continue;
+            } elseif (
+                'document' === $entry['type']
+                && isset($entry['document'])
+                && !$this->adminAuthorizationChecker->isEasyAdminGranted(
+                    $objectsConfig[$entry['document']],
                     isset($entry['params']) && isset($entry['params']['action']) ? $entry['params']['action'] : 'list'
                 )
             ) {
@@ -56,7 +66,7 @@ class MenuHelper
             }
 
             if (isset($entry['children']) && \is_array($entry['children'])) {
-                $menuConfig[$key]['children'] = $this->pruneAccessDeniedEntries($entry['children'], $entitiesConfig);
+                $menuConfig[$key]['children'] = $this->pruneAccessDeniedEntries($entry['children'], $objectsConfig);
             }
         }
 

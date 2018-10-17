@@ -27,6 +27,16 @@ class ShortFormTypeConfigPassTest extends \PHPUnit_Framework_TestCase
                     ]],
                 ],
             ],
+            'documents' => [
+                'TestDocument' => [
+                    'form' => ['fields' => ['testField1' => ['type' => 'foo']]],
+                    'edit' => ['fields' => ['testField2' => ['type' => 'bar']]],
+                    'new' => ['fields' => [
+                        'testField1' => ['type' => 'foo'],
+                        'testField2' => ['type' => 'bar'],
+                    ]],
+                ],
+            ],
         ];
 
         $backendConfig = $shortFormTypeConfigPass->process($backendConfig);
@@ -34,6 +44,26 @@ class ShortFormTypeConfigPassTest extends \PHPUnit_Framework_TestCase
         $expectedBackendConfig = [
             'entities' => [
                 'TestEntity' => [
+                    'form' => [
+                        'fields' => [
+                            'testField1' => ['type' => 'AppBundle\Form\Type\FooType'],
+                        ],
+                    ],
+                    'edit' => [
+                        'fields' => [
+                            'testField2' => ['type' => 'AppBundle\Form\Type\BarType'],
+                        ],
+                    ],
+                    'new' => [
+                        'fields' => [
+                            'testField1' => ['type' => 'AppBundle\Form\Type\FooType'],
+                            'testField2' => ['type' => 'AppBundle\Form\Type\BarType'],
+                        ],
+                    ],
+                ],
+            ],
+            'documents' => [
+                'TestDocument' => [
                     'form' => [
                         'fields' => [
                             'testField1' => ['type' => 'AppBundle\Form\Type\FooType'],
@@ -75,6 +105,14 @@ class ShortFormTypeConfigPassTest extends \PHPUnit_Framework_TestCase
                     ]],
                 ],
             ],
+            'documents' => [
+                'TestDocument' => [
+                    'new' => ['fields' => [
+                        'testField1' => ['type' => 'text'],
+                        'testField2' => ['type' => 'choice'],
+                    ]],
+                ],
+            ],
         ];
 
         $backendConfig = $shortFormTypeConfigPass->process($backendConfig);
@@ -82,6 +120,16 @@ class ShortFormTypeConfigPassTest extends \PHPUnit_Framework_TestCase
         $expectedBackendConfig = [
             'entities' => [
                 'TestEntity' => [
+                    'new' => [
+                        'fields' => [
+                            'testField1' => ['type' => 'AppBundle\Form\Type\TextType'],
+                            'testField2' => ['type' => ChoiceType::class],
+                        ],
+                    ],
+                ],
+            ],
+            'documents' => [
+                'TestDocument' => [
                     'new' => [
                         'fields' => [
                             'testField1' => ['type' => 'AppBundle\Form\Type\TextType'],

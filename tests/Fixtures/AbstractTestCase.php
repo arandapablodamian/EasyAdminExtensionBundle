@@ -37,6 +37,20 @@ abstract class AbstractTestCase extends WebTestCase
     }
 
     /**
+     * {@inheritdoc}
+     */
+    protected static function createKernel(array $options = [])
+    {
+        $kernel = parent::createKernel($options);
+
+        $withMongoOdm = isset($options['withMongoOdm']) ? (bool) $options['withMongoOdm'] : false;
+
+        $kernel->withMongoOdm($withMongoOdm);
+
+        return $kernel;
+    }
+
+    /**
      * It ensures that the database contains the original fixtures of the
      * application. This way tests can modify its contents safely without
      * interfering with subsequent tests.
@@ -62,6 +76,16 @@ abstract class AbstractTestCase extends WebTestCase
     protected function getBackendPage(array $queryParameters = [])
     {
         return $this->client->request('GET', '/admin/?'.\http_build_query($queryParameters, '', '&'));
+    }
+
+    /**
+     * @param array $queryParameters
+     *
+     * @return Crawler
+     */
+    protected function getMongoOdmBackendPage(array $queryParameters = [])
+    {
+        return $this->client->request('GET', '/admin-mongo-odm/?'.\http_build_query($queryParameters, '', '&'));
     }
 
     /**

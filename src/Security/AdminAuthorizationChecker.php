@@ -17,13 +17,13 @@ class AdminAuthorizationChecker
     }
 
     /**
-     * Throws an error if user has no access to the entity action.
+     * Throws an error if user has no access to the object action.
      *
-     * @param array  $entityConfig
+     * @param array  $objectConfig
      * @param string $actionName
      * @param mixed  $subject
      */
-    public function checksUserAccess(array $entityConfig, string $actionName, $subject = null)
+    public function checksUserAccess(array $objectConfig, string $actionName, $subject = null)
     {
         if ($this->adminMinimumRole && !$this->authorizationChecker->isGranted($this->adminMinimumRole)) {
             throw new AccessDeniedException(
@@ -31,11 +31,11 @@ class AdminAuthorizationChecker
             );
         }
 
-        $requiredRole = $this->getRequiredRole($entityConfig, $actionName);
+        $requiredRole = $this->getRequiredRole($objectConfig, $actionName);
 
         if ($requiredRole && !$this->authorizationChecker->isGranted($requiredRole, $subject)) {
             throw new AccessDeniedException(
-                \sprintf('You must be granted %s role to perform this entity action !', $requiredRole)
+                \sprintf('You must be granted %s role to perform this object action !', $requiredRole)
             );
         }
     }
@@ -43,16 +43,16 @@ class AdminAuthorizationChecker
     /**
      * Returns user access as boolean, no exception thrown.
      *
-     * @param array  $entityConfig
+     * @param array  $objectConfig
      * @param string $actionName
      * @param mixed  $subject
      *
      * @return bool
      */
-    public function isEasyAdminGranted(array $entityConfig, string $actionName, $subject = null)
+    public function isEasyAdminGranted(array $objectConfig, string $actionName, $subject = null)
     {
         try {
-            $this->checksUserAccess($entityConfig, $actionName, $subject);
+            $this->checksUserAccess($objectConfig, $actionName, $subject);
         } catch (AccessDeniedException $e) {
             return false;
         }
@@ -60,17 +60,17 @@ class AdminAuthorizationChecker
         return true;
     }
 
-    protected function getRequiredRole(array $entityConfig, string $actionName)
+    protected function getRequiredRole(array $objectConfig, string $actionName)
     {
         // Prevent from security breach: role for 'list' action was not required for 'List' nor 'LIST'...
         $actionName = \strtolower($actionName);
 
-        if (isset($entityConfig[$actionName]) && isset($entityConfig[$actionName]['role'])) {
-            return $entityConfig[$actionName]['role'];
-        } elseif (isset($entityConfig['role_prefix'])) {
-            return $entityConfig['role_prefix'].'_'.\strtoupper($actionName);
+        if (isset($objectConfig[$actionName]) && isset($objectConfig[$actionName]['role'])) {
+            return $objectConfig[$actionName]['role'];
+        } elseif (isset($objectConfig['role_prefix'])) {
+            return $objectConfig['role_prefix'].'_'.\strtoupper($actionName);
         }
 
-        return $entityConfig['role'] ?? null;
+        return $objectConfig['role'] ?? null;
     }
 }
