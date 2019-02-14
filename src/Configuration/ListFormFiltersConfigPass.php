@@ -7,7 +7,8 @@ use Doctrine\ORM\Mapping\ClassMetadataInfo;
 use EasyCorp\Bundle\EasyAdminBundle\Configuration\ConfigPassInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Form\Type\EasyAdminAutocompleteType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\Extension\Core\Type\DateType;
 /**
  * Guess form types for list form filters.
  */
@@ -66,11 +67,7 @@ class ListFormFiltersConfigPass implements ConfigPassInterface
                     $filterConfig = $formFilter;
                 }
 
-                $this->configureFilter(
-                    $entityConfig['class'],
-                    $filterConfig,
-                    isset($backendConfig['translation_domain']) ? $backendConfig['translation_domain'] : 'EasyAdminBundle'
-                );
+                $this->configureFilter($entityConfig['class'], $filterConfig);
 
                 // If type is not configured at this steps => not guessable
                 if (!isset($filterConfig['type'])) {
@@ -87,7 +84,7 @@ class ListFormFiltersConfigPass implements ConfigPassInterface
         return $backendConfig;
     }
 
-    private function configureFilter(string $entityClass, array &$filterConfig, string $translationDomain)
+    private function configureFilter(string $entityClass, array &$filterConfig)
     {
         // No need to guess type
         if (isset($filterConfig['type'])) {
@@ -107,7 +104,7 @@ class ListFormFiltersConfigPass implements ConfigPassInterface
 
         if ($entityMetadata->hasField($filterConfig['property'])) {
             $this->configureFieldFilter(
-                $entityClass, $entityMetadata->getFieldMapping($filterConfig['property']), $filterConfig, $translationDomain
+                $entityClass, $entityMetadata->getFieldMapping($filterConfig['property']), $filterConfig
             );
         } elseif ($entityMetadata->hasAssociation($filterConfig['property'])) {
             $this->configureAssociationFilter(
@@ -116,7 +113,7 @@ class ListFormFiltersConfigPass implements ConfigPassInterface
         }
     }
 
-    private function configureFieldFilter(string $entityClass, array $fieldMapping, array &$filterConfig, string $translationDomain)
+    private function configureFieldFilter(string $entityClass, array $fieldMapping, array &$filterConfig)
     {
         switch ($fieldMapping['type']) {
             case 'boolean':
@@ -130,12 +127,30 @@ class ListFormFiltersConfigPass implements ConfigPassInterface
                 );
                 break;
             case 'string':
-                $filterConfig['type'] = ChoiceType::class;
+                $filterConfig['type'] = TextType::class;
+                
                 $defaultFilterConfigTypeOptions = array(
-                    'multiple' => true,
-                    'choices' => $this->getChoiceList($entityClass, $filterConfig['property'], $filterConfig),
-                    'attr' => array('data-widget' => 'select2'),
-                    'choice_translation_domain' => $translationDomain,
+                    // 'multiple' => true,
+                    // 'choices' => $this->getChoiceList($entityClass, $filterConfig['property'], $filterConfig),
+                    // 'attr' => array('data-widget' => 'select2'),
+                );
+                break;
+            case 'date':
+                $filterConfig['type'] = DateType::class;
+
+                $defaultFilterConfigTypeOptions = array(
+                    'format' => 'yyyy-MM-dd',
+                    'label'=>$filterConfig['label'],
+                    'widget' => 'single_text',
+                );
+                break;
+            case 'datetime':
+                $filterConfig['type'] = DateType::class;
+
+                $defaultFilterConfigTypeOptions = array(
+                     'format' => 'yyyy-MM-dd',
+                     'label'=>$filterConfig['label'],
+                     'widget' => 'single_text',
                 );
                 break;
             default:
@@ -143,6 +158,7 @@ class ListFormFiltersConfigPass implements ConfigPassInterface
         }
 
         // Merge default type options when defined
+        
         if (null !== $defaultFilterConfigTypeOptions) {
             $filterConfig['type_options'] = \array_merge(
                 $defaultFilterConfigTypeOptions,
