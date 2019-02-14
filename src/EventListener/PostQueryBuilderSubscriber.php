@@ -2,9 +2,8 @@
 
 namespace AlterPHP\EasyAdminExtensionBundle\EventListener;
 
-use Doctrine\Common\Collections\Collection;
-use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Query\QueryException;
+use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Event\EasyAdminEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -14,21 +13,6 @@ use Symfony\Component\EventDispatcher\GenericEvent;
  */
 class PostQueryBuilderSubscriber implements EventSubscriberInterface
 {
-    /**
-     * @var \AlterPHP\EasyAdminExtensionBundle\Helper\ListFormFiltersHelper
-     */
-    protected $listFormFiltersHelper;
-
-    /**
-     * ListFormFiltersExtension constructor.
-     *
-     * @param \AlterPHP\EasyAdminExtensionBundle\Helper\ListFormFiltersHelper $listFormFiltersHelper
-     */
-    public function __construct($listFormFiltersHelper)
-    {
-        $this->listFormFiltersHelper = $listFormFiltersHelper;
-    }
-
     /**
      * {@inheritdoc}
      */
@@ -49,20 +33,9 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
     {
         $queryBuilder = $event->getArgument('query_builder');
 
-        // Request filters
         if ($event->hasArgument('request')) {
             $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', array()));
-        }
-
-        // List form filters
-        if ($event->hasArgument('entity')) {
-            $entityConfig = $event->getArgument('entity');
-            if (isset($entityConfig['list']['form_filters'])) {
-                $listFormFiltersForm = $this->listFormFiltersHelper->getListFormFilters($entityConfig['list']['form_filters']);
-                if ($listFormFiltersForm->isSubmitted() && $listFormFiltersForm->isValid()) {
-                    $this->applyFormFilters($queryBuilder, $listFormFiltersForm->getData());
-                }
-            }
+            $this->applyFormFilters($queryBuilder, $event->getArgument('request')->get('form_filters', array()));
         }
     }
 
@@ -90,7 +63,7 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
     {
         foreach ($filters as $field => $value) {
             // Empty string and numeric keys is considered as "not applied filter"
-            if ('' === $value || \is_int($field)) {
+            if (\is_int($field) || '' === $value) {
                 continue;
             }
             // Add root entity alias if none provided
@@ -117,7 +90,7 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
         foreach ($filters as $field => $value) {
             $value = $this->filterEasyadminAutocompleteValue($value);
             // Empty string and numeric keys is considered as "not applied filter"
-            if (null === $value || '' === $value || \is_int($field)) {
+            if (\is_int($field) || '' === $value) {
                 continue;
             }
             // Add root entity alias if none provided
@@ -151,37 +124,37 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
      * @param mixed        $value
      */
     protected function filterQueryBuilder(QueryBuilder $queryBuilder, string $field, string $parameter, $value)
-    {
-        switch (true) {
-            // Multiple values leads to IN statement
-            case $value instanceof Collection:
-            case \is_array($value):
-                if (0 < \count($value)) {
-                    $filterDqlPart = $field.' IN (:'.$parameter.')';
-                }
-                break;
-            // Special value for NULL evaluation
-            case '_NULL' === $value:
-                $parameter = null;
-                $filterDqlPart = $field.' IS NULL';
-                break;
-            // Special value for NOT NULL evaluation
-            case '_NOT_NULL' === $value:
-                $parameter = null;
-                $filterDqlPart = $field.' IS NOT NULL';
-                break;
-            // Default is equality
-            default:
-                $filterDqlPart = $field.' = :'.$parameter;
-                break;
+    {   
+        $bandera=false;
+        // For multiple value, use an IN clause, equality otherwise
+        if (\is_array($value)) {
+            $filterDqlPart = $field.' IN (:'.$parameter.')';
+        } elseif ('_NULL' === $value) {
+            $parameter = null;
+            $filterDqlPart = $field.' IS NULL';
+        } elseif ('_NOT_NULL' === $value) {
+            $parameter = null;
+            $filterDqlPart = $field.' IS NOT NULL';
+        }elseif($field=='entity.abogado' || $field=='entity.demandada' ||$field=='entity.actora'){
+            $filterDqlPart = $field." LIKE '%".$value."%'"; 
+            $bandera=true;
+        }elseif($field=='entity.fechaDespacho'){
+            $filterDqlPart = $field." >= :".$parameter.""; 
+        }elseif($field=='entity.updated'){
+            $filterDqlPart = 'entity.fechaDespacho'." <= :".$parameter.""; 
+        }else {
+            $filterDqlPart = $field.' = :'.$parameter;
         }
 
-        if (isset($filterDqlPart)) {
-            $queryBuilder->andWhere($filterDqlPart);
-            if (null !== $parameter) {
-                $queryBuilder->setParameter($parameter, $value);
-            }
+        $queryBuilder->andWhere($filterDqlPart);
+        if (null !== $parameter && !$bandera) {
+            $queryBuilder->setParameter($parameter, $value);
         }
+        dump('aca');
+        // if($bandera){
+        //     dump($queryBuilder->getQuery());
+        //     die;
+        // }
     }
 
     /**
