@@ -2,7 +2,6 @@
 
 namespace AlterPHP\EasyAdminExtensionBundle\EventListener;
 
-use AlterPHP\EasyAdminExtensionBundle\Model\ListFilter;
 use Doctrine\ORM\Query\QueryException;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Event\EasyAdminEvents;
@@ -15,29 +14,14 @@ use Symfony\Component\EventDispatcher\GenericEvent;
 class PostQueryBuilderSubscriber implements EventSubscriberInterface
 {
     /**
-     * @var \AlterPHP\EasyAdminExtensionBundle\Helper\ListFormFiltersHelper
-     */
-    protected $listFormFiltersHelper;
-
-    /**
-     * ListFormFiltersExtension constructor.
-     *
-     * @param \AlterPHP\EasyAdminExtensionBundle\Helper\ListFormFiltersHelper $listFormFiltersHelper
-     */
-    public function __construct($listFormFiltersHelper)
-    {
-        $this->listFormFiltersHelper = $listFormFiltersHelper;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public static function getSubscribedEvents()
     {
-        return [
-            EasyAdminEvents::POST_LIST_QUERY_BUILDER => ['onPostListQueryBuilder'],
-            EasyAdminEvents::POST_SEARCH_QUERY_BUILDER => ['onPostSearchQueryBuilder'],
-        ];
+        return array(
+            EasyAdminEvents::POST_LIST_QUERY_BUILDER => array('onPostListQueryBuilder'),
+            EasyAdminEvents::POST_SEARCH_QUERY_BUILDER => array('onPostSearchQueryBuilder'),
+        );
     }
 
     /**
@@ -49,20 +33,9 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
     {
         $queryBuilder = $event->getArgument('query_builder');
 
-        // Request filters
         if ($event->hasArgument('request')) {
-            $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', []));
-        }
-
-        // List form filters
-        if ($event->hasArgument('entity')) {
-            $entityConfig = $event->getArgument('entity');
-            if (isset($entityConfig['list']['form_filters'])) {
-                $listFormFiltersForm = $this->listFormFiltersHelper->getListFormFilters($entityConfig['list']['form_filters']);
-                if ($listFormFiltersForm->isSubmitted() && $listFormFiltersForm->isValid()) {
-                    $this->applyFormFilters($queryBuilder, $listFormFiltersForm->getData());
-                }
-            }
+            $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', array()));
+            $this->applyFormFilters($queryBuilder, $event->getArgument('request')->get('form_filters', array()));
         }
     }
 
@@ -76,7 +49,7 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
         $queryBuilder = $event->getArgument('query_builder');
 
         if ($event->hasArgument('request')) {
-            $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', []));
+            $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', array()));
         }
     }
 
@@ -86,18 +59,23 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
      * @param QueryBuilder $queryBuilder
      * @param array        $filters
      */
-    protected function applyRequestFilters(QueryBuilder $queryBuilder, array $filters = [])
+    protected function applyRequestFilters(QueryBuilder $queryBuilder, array $filters = array())
     {
         foreach ($filters as $field => $value) {
             // Empty string and numeric keys is considered as "not applied filter"
-            if ('' === $value || \is_int($field)) {
+            if (\is_int($field) || '' === $value) {
                 continue;
             }
+            // Add root entity alias if none provided
+            $field = false === \strpos($field, '.') ? $queryBuilder->getRootAlias().'.'.$field : $field;
+            // Checks if filter is directly appliable on queryBuilder
+            if (!$this->isFilterAppliable($queryBuilder, $field)) {
+                continue;
+            }
+            // Sanitize parameter name
+            $parameter = 'request_filter_'.\str_replace('.', '_', $field);
 
-            $operator = \is_array($value) ? ListFilter::OPERATOR_IN : ListFilter::OPERATOR_EQUALS;
-            $listFilter = ListFilter::createFromRequest($field, $operator, $value);
-
-            $this->filterQueryBuilder($queryBuilder, $field, $listFilter);
+            $this->filterQueryBuilder($queryBuilder, $field, $parameter, $value);
         }
     }
 
@@ -107,15 +85,34 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
      * @param QueryBuilder $queryBuilder
      * @param array        $filters
      */
-    protected function applyFormFilters(QueryBuilder $queryBuilder, array $filters = [])
+    protected function applyFormFilters(QueryBuilder $queryBuilder, array $filters = array())
     {
-        foreach ($filters as $field => $listFilter) {
-            if (null === $listFilter) {
+        foreach ($filters as $field => $value) {
+            $value = $this->filterEasyadminAutocompleteValue($value);
+            // Empty string and numeric keys is considered as "not applied filter"
+            if (\is_int($field) || '' === $value) {
                 continue;
             }
+            // Add root entity alias if none provided
+            $field = false === \strpos($field, '.') ? $queryBuilder->getRootAlias().'.'.$field : $field;
+            // Checks if filter is directly appliable on queryBuilder
+            if (!$this->isFilterAppliable($queryBuilder, $field)) {
+                continue;
+            }
+            // Sanitize parameter name
+            $parameter = 'form_filter_'.\str_replace('.', '_', $field);
 
-            $this->filterQueryBuilder($queryBuilder, $field, $listFilter);
+            $this->filterQueryBuilder($queryBuilder, $field, $parameter, $value);
         }
+    }
+
+    private function filterEasyadminAutocompleteValue($value)
+    {
+        if (!\is_array($value) || !isset($value['autocomplete']) || 1 !== \count($value)) {
+            return $value;
+        }
+
+        return $value['autocomplete'];
     }
 
     /**
@@ -123,104 +120,41 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
      *
      * @param QueryBuilder $queryBuilder
      * @param string       $field
-     * @param ListFilter   $listFilter
+     * @param string       $parameter
+     * @param mixed        $value
      */
-    protected function filterQueryBuilder(QueryBuilder $queryBuilder, string $field, ListFilter $listFilter)
-    {
-        $value = $this->filterEasyadminAutocompleteValue($listFilter->getValue());
-        // Empty string and numeric keys is considered as "not applied filter"
-        if (null === $value || '' === $value || \is_int($field)) {
-            return;
+    protected function filterQueryBuilder(QueryBuilder $queryBuilder, string $field, string $parameter, $value)
+    {   
+        $bandera=false;
+        // For multiple value, use an IN clause, equality otherwise
+        if (\is_array($value)) {
+            $filterDqlPart = $field.' IN (:'.$parameter.')';
+        } elseif ('_NULL' === $value) {
+            $parameter = null;
+            $filterDqlPart = $field.' IS NULL';
+        } elseif ('_NOT_NULL' === $value) {
+            $parameter = null;
+            $filterDqlPart = $field.' IS NOT NULL';
+        }elseif($field=='entity.abogado' || $field=='entity.demandada' ||$field=='entity.actora'){
+            $filterDqlPart = $field." LIKE '%".$value."%'"; 
+            $bandera=true;
+        }elseif($field=='entity.fechaDespacho'){
+            $filterDqlPart = $field." >= :".$parameter.""; 
+        }elseif($field=='entity.updated'){
+            $filterDqlPart = 'entity.fechaDespacho'." <= :".$parameter.""; 
+        }else {
+            $filterDqlPart = $field.' = :'.$parameter;
         }
 
-        // Add root entity alias if none provided
-        $queryField = $listFilter->getProperty();
-        if (false === \strpos($queryField, '.')) {
-            $queryField = $queryBuilder->getRootAlias().'.'.$queryField;
+        $queryBuilder->andWhere($filterDqlPart);
+        if (null !== $parameter && !$bandera) {
+            $queryBuilder->setParameter($parameter, $value);
         }
 
-        // Checks if filter is directly appliable on queryBuilder
-        if (!$this->isFilterAppliable($queryBuilder, $queryField)) {
-            return;
-        }
-
-        $operator = $listFilter->getOperator();
-        // Sanitize parameter name
-        $parameter = 'form_filter_'.\str_replace('.', '_', $field);
-
-        switch ($operator) {
-            case ListFilter::OPERATOR_EQUALS:
-                if ('_NULL' === $value) {
-                    $queryBuilder->andWhere(\sprintf('%s IS NULL', $queryField));
-                } elseif ('_NOT_NULL' === $value) {
-                    $queryBuilder->andWhere(\sprintf('%s IS NOT NULL', $queryField));
-                } else {
-                    $queryBuilder
-                        ->andWhere(\sprintf('%s %s :%s', $queryField, '=', $parameter))
-                        ->setParameter($parameter, $value)
-                    ;
-                }
-                break;
-            case ListFilter::OPERATOR_NOT:
-                $queryBuilder
-                    ->andWhere(\sprintf('%s %s :%s', $queryField, '!=', $parameter))
-                    ->setParameter($parameter, $value)
-                ;
-                break;
-            case ListFilter::OPERATOR_IN:
-                // Checks that $value is not an empty Traversable
-                if (0 < \count($value)) {
-                    $queryBuilder
-                        ->andWhere(\sprintf('%s %s (:%s)', $queryField, 'IN', $parameter))
-                        ->setParameter($parameter, $value)
-                    ;
-                }
-                break;
-            case ListFilter::OPERATOR_NOTIN:
-                // Checks that $value is not an empty Traversable
-                if (0 < \count($value)) {
-                    $queryBuilder
-                        ->andWhere(\sprintf('%s %s (:%s)', $queryField, 'NOT IN', $parameter))
-                        ->setParameter($parameter, $value)
-                    ;
-                }
-                break;
-            case ListFilter::OPERATOR_GT:
-                $queryBuilder
-                    ->andWhere(\sprintf('%s %s :%s', $queryField, '>', $parameter))
-                    ->setParameter($parameter, $value)
-                ;
-                break;
-            case ListFilter::OPERATOR_GTE:
-                $queryBuilder
-                    ->andWhere(\sprintf('%s %s :%s', $queryField, '>=', $parameter))
-                    ->setParameter($parameter, $value)
-                ;
-                break;
-            case ListFilter::OPERATOR_LT:
-                $queryBuilder
-                    ->andWhere(\sprintf('%s %s :%s', $queryField, '<', $parameter))
-                    ->setParameter($parameter, $value)
-                ;
-                break;
-            case ListFilter::OPERATOR_LTE:
-                $queryBuilder
-                    ->andWhere(\sprintf('%s %s :%s', $queryField, '<=', $parameter))
-                    ->setParameter($parameter, $value)
-                ;
-                break;
-            default:
-                throw new \RuntimeException(\sprintf('Operator "%s" is not supported !', $operator));
-        }
-    }
-
-    protected function filterEasyadminAutocompleteValue($value)
-    {
-        if (!\is_array($value) || !isset($value['autocomplete']) || 1 !== \count($value)) {
-            return $value;
-        }
-
-        return $value['autocomplete'];
+        // if($bandera){
+        //     dump($queryBuilder->getQuery());
+        //     die;
+        // }
     }
 
     /**
