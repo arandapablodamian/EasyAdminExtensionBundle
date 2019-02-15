@@ -150,7 +150,6 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
         if (null !== $parameter && !$bandera) {
             $queryBuilder->setParameter($parameter, $value);
         }
-        dump('aca');
         // if($bandera){
         //     dump($queryBuilder->getQuery());
         //     die;
