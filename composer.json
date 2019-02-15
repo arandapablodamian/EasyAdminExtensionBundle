@@ -1,5 +1,5 @@
 {
-    "name": "wolverine20/EasyAdminExtensionBundle",
+    "name": "alterphp/easyadmin-extension-bundle",
     "type": "symfony-bundle",
     "description": "This bundle provides some extensions to javiereguiluz/easyadmin-bundle",
     "keywords": ["backend", "admin", "generator"],
