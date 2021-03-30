@@ -7,7 +7,7 @@ use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Event\EasyAdminEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
-
+use Symfony\Component\HttpFoundation\Session\Session;
 /**
  * Apply filters on list/search queryBuilder.
  */
@@ -32,11 +32,13 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
     public function onPostListQueryBuilder(GenericEvent $event)
     {
         $queryBuilder = $event->getArgument('query_builder');
-
+        $session = new Session();
         if ($event->hasArgument('request')) {
             $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', array()));
             $this->applyFormFilters($queryBuilder, $event->getArgument('request')->get('form_filters', array()));
         }
+
+        $session->set('temp_query_builder',$queryBuilder->getQuery()->getResult());
     }
 
     /**
