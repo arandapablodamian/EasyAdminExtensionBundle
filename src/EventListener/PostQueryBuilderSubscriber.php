@@ -38,7 +38,17 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
             $this->applyFormFilters($queryBuilder, $event->getArgument('request')->get('form_filters', array()));
         }
 
-        $session->set('temp_query_builder',$queryBuilder->getQuery()->getResult());
+        if($event->getArgument('request')->query->get('entity') == 'Expediente'){
+            $queryBuilderExcel = clone $queryBuilder;
+            $ids_exp = $queryBuilderExcel->select('
+            entity.id as id,
+            entity.updated as updated
+            ')
+            ->orderBy('entity.updated')
+            ->getQuery()->getScalarResult();
+            $ids = array_column($ids_exp, 'id');
+            $session->set('temp_query_builder',$ids);
+        }
     }
 
     /**
