@@ -60,6 +60,8 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
     {
         $queryBuilder = $event->getArgument('query_builder');
 
+        dump($queryBuilder);
+            die;
         if ($event->hasArgument('request')) {
             $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', array()));
         }
@@ -78,12 +80,15 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
             if (\is_int($field) || '' === $value) {
                 continue;
             }
+            
             // Add root entity alias if none provided
             $field = false === \strpos($field, '.') ? $queryBuilder->getRootAlias().'.'.$field : $field;
             // Checks if filter is directly appliable on queryBuilder
             if (!$this->isFilterAppliable($queryBuilder, $field)) {
                 continue;
             }
+
+            
             // Sanitize parameter name
             $parameter = 'request_filter_'.\str_replace('.', '_', $field);
 
@@ -99,23 +104,38 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
      */
     protected function applyFormFilters(QueryBuilder $queryBuilder, array $filters = array())
     {
+        
         foreach ($filters as $field => $value) {
+
+           
+       
             $value = $this->filterEasyadminAutocompleteValue($value);
             // Empty string and numeric keys is considered as "not applied filter"
             if (\is_int($field) || '' === $value) {
                 continue;
             }
-            // Add root entity alias if none provided
-            $field = false === \strpos($field, '.') ? $queryBuilder->getRootAlias().'.'.$field : $field;
-            // Checks if filter is directly appliable on queryBuilder
-            if (!$this->isFilterAppliable($queryBuilder, $field)) {
-                continue;
-            }
-            // Sanitize parameter name
-            $parameter = 'form_filter_'.\str_replace('.', '_', $field);
 
-            $this->filterQueryBuilder($queryBuilder, $field, $parameter, $value);
+            if($field == 'busquedaAbogadoAsignado'){
+               
+                $queryBuilder->join('eu.user','usuario')
+                            ->andWhere('( usuario.nombre like :campo or usuario.apellido like :campo or usuario.matricula like :campo or usuario.documento like :campo )')
+                            ->setParameter('campo',"%".$value."%");
+            }else{
+                // Add root entity alias if none provided
+                $field = false === \strpos($field, '.') ? $queryBuilder->getRootAlias().'.'.$field : $field;
+                            
+                // Checks if filter is directly appliable on queryBuilder
+                if (!$this->isFilterAppliable($queryBuilder, $field)) {
+                    continue;
+                }
+                // Sanitize parameter name
+                $parameter = 'form_filter_'.\str_replace('.', '_', $field);
+
+                $this->filterQueryBuilder($queryBuilder, $field, $parameter, $value);
+            }
+          
         }
+      
     }
 
     private function filterEasyadminAutocompleteValue($value)
