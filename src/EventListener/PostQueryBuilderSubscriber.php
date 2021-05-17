@@ -60,8 +60,6 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
     {
         $queryBuilder = $event->getArgument('query_builder');
 
-        dump($queryBuilder);
-            die;
         if ($event->hasArgument('request')) {
             $this->applyRequestFilters($queryBuilder, $event->getArgument('request')->get('filters', array()));
         }
@@ -182,10 +180,7 @@ class PostQueryBuilderSubscriber implements EventSubscriberInterface
         if (null !== $parameter && !$bandera) {
             $queryBuilder->setParameter($parameter, $value);
         }
-        // if($bandera){
-        //     dump($queryBuilder->getQuery());
-        //     die;
-        // }
+ 
     }
 
     /**
